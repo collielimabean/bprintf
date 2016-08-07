@@ -1,14 +1,12 @@
 #include "bprintf.h"
-#include <stdint.h>
 #include <string.h>
-
+#include <stdarg.h>
+#include <stdint.h>
 
 #define GET_BYTE(val, index) ((char)(val >> (8 * index) & 0xFF))
 
 
 static int validate_fmt_str(const char *fmt);
-
-static 
 
 /*
  * Supported format specifiers:
@@ -43,18 +41,19 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
     buffer_index = 0;
     arg_index = 0;
 
-    for (itr = fmt; *itr; *itr++)
+    for (itr = fmt; *itr; itr++)
     {
         switch (*itr)
         {
             case 'c':
-                buffer[buffer_index] = va_arg(args, uint8_t);
-                buffer_index += sizeof(uint8_t);
+                buffer[buffer_index] = (char) (va_arg(args, uint32_t));
+                buffer_index += sizeof(char);
                 break;
 
             case 's':
-                uint16_t val = va_arg(args, uint16_t);
-                if (endianness == BIG)
+            {
+                uint16_t val = (uint16_t) va_arg(args, uint32_t);
+                if (endianness == Big)
                 {
                     buffer[buffer_index] = GET_BYTE(val, 1);
                     buffer[buffer_index + 1] = GET_BYTE(val, 0);
@@ -67,10 +66,12 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
 
                 buffer_index += sizeof(uint16_t);
                 break;
+            }
 
             case 'i':
+            {
                 uint32_t val = va_arg(args, uint32_t);
-                if (endianness == BIG)
+                if (endianness == Big)
                 {
                     buffer[buffer_index] = GET_BYTE(val, 3);
                     buffer[buffer_index + 1] = GET_BYTE(val, 2);
@@ -85,20 +86,18 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
                     buffer[buffer_index + 3] = GET_BYTE(val, 1);                    
                 }
                 break;
+            }
 
             case 'l':
-                if (endianness == BIG)
+            {
+                if (endianness == Big)
                 {
-                    buffer[buffer_index] = GET_BYTE(val, 3);
-                    buffer[buffer_index + 1] = GET_BYTE(val, 2);
-                    buffer[buffer_index + 2] = GET_BYTE(val, 1);
-                    buffer[buffer_index + 3] = GET_BYTE(val, 0);
                 }
                 else
                 {
-                    
                 }
                 break;
+            }
             default:
                 // string corrupted?
                 return 0;
@@ -107,7 +106,7 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
     }
 
     // not all arguments consumed!
-    if (arg_index != num_args - 1)
+    if (arg_index != num_args)
         return 0;
 
     va_end(args);
@@ -125,12 +124,12 @@ int validate_fmt_str(const char *fmt)
     bufsize = 0;
     itr = fmt;
 
-    for (itr = fmt, *itr; *itr++)
+    for (itr = fmt; *itr; itr++)
     {    
         switch (*itr)
         {
             case 'c':
-                bufsize += sizeof(uint8_t);
+                bufsize += sizeof(char);
                 break;
             case 's':
                 bufsize += sizeof(uint16_t);

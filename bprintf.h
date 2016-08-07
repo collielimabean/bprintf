@@ -1,10 +1,12 @@
 #ifndef _BPRINTF_H
 #define _BPRINTF_H
 
-enum Endianness
+typedef enum
 {
-    Big, Little
-};
+    Big, 
+    Little
+} Endianness;
+
 
 int bprintf(
     char *buffer,
