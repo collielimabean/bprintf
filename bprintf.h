@@ -7,7 +7,6 @@ typedef enum
     Little
 } Endianness;
 
-
 int bprintf(
     char *buffer,
     int size, 

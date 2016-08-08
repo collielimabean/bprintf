@@ -16,7 +16,6 @@ static int validate_fmt_str(const char *fmt);
  * long (8) = 'l'
  */
 
-// write big endian only
 int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
 {
     int required_size;
@@ -26,11 +25,13 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
     const char *itr;
     va_list args;
 
-    if (!buffer || size <= 0)
+    if (!buffer || !fmt || size <= 0)
         return 0;
 
-    // since fmt specifier is one char
-    // # of varargs is simply length of fmt
+    /*
+     * since fmt specifier is one char
+     * # of varargs is simply length of fmt
+     */
     num_args = strlen(fmt);
     required_size = validate_fmt_str(fmt);
     if (required_size == 0 || required_size > size)
@@ -43,16 +44,17 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
 
     for (itr = fmt; *itr; itr++)
     {
+        uint64_t val;
+        val = (uint64_t) va_arg(args, uint64_t);
+
         switch (*itr)
         {
             case 'c':
-                buffer[buffer_index] = (char) (va_arg(args, uint32_t));
+                buffer[buffer_index] = (char) (val);
                 buffer_index += sizeof(char);
                 break;
 
             case 's':
-            {
-                uint16_t val = (uint16_t) va_arg(args, uint32_t);
                 if (endianness == Big)
                 {
                     buffer[buffer_index] = GET_BYTE(val, 1);
@@ -66,11 +68,8 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
 
                 buffer_index += sizeof(uint16_t);
                 break;
-            }
 
             case 'i':
-            {
-                uint32_t val = va_arg(args, uint32_t);
                 if (endianness == Big)
                 {
                     buffer[buffer_index] = GET_BYTE(val, 3);
@@ -85,27 +84,45 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
                     buffer[buffer_index + 2] = GET_BYTE(val, 0);
                     buffer[buffer_index + 3] = GET_BYTE(val, 1);                    
                 }
+
+                buffer_index += sizeof(uint32_t);
                 break;
-            }
 
             case 'l':
-            {
                 if (endianness == Big)
                 {
+                    buffer[buffer_index] = GET_BYTE(val, 7);
+                    buffer[buffer_index + 1] = GET_BYTE(val, 6);
+                    buffer[buffer_index + 2] = GET_BYTE(val, 5);
+                    buffer[buffer_index + 3] = GET_BYTE(val, 4);
+                    buffer[buffer_index + 4] = GET_BYTE(val, 3);
+                    buffer[buffer_index + 5] = GET_BYTE(val, 2);
+                    buffer[buffer_index + 6] = GET_BYTE(val, 1);
+                    buffer[buffer_index + 7] = GET_BYTE(val, 0);
                 }
                 else
                 {
+                    buffer[buffer_index] = GET_BYTE(val, 6);
+                    buffer[buffer_index + 1] = GET_BYTE(val, 7);
+                    buffer[buffer_index + 2] = GET_BYTE(val, 4);
+                    buffer[buffer_index + 3] = GET_BYTE(val, 5);
+                    buffer[buffer_index + 4] = GET_BYTE(val, 2);
+                    buffer[buffer_index + 5] = GET_BYTE(val, 3);
+                    buffer[buffer_index + 6] = GET_BYTE(val, 0);
+                    buffer[buffer_index + 7] = GET_BYTE(val, 1);
                 }
+
+                buffer_index += sizeof(uint64_t);
                 break;
-            }
+
             default:
-                // string corrupted?
+                /* string corrupted? */
                 return 0;
         }
         arg_index++;
     }
 
-    // not all arguments consumed!
+    /* not all arguments consumed! */
     if (arg_index != num_args)
         return 0;
 
@@ -113,12 +130,12 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
     return required_size;
 }
 
-int validate_fmt_str(const char *fmt)
+static int validate_fmt_str(const char *fmt)
 {
     int bufsize;
     const char *itr;
 
-    if (!fmt)
+    if (!fmt || strlen(fmt) == 0)
         return 0;
 
     bufsize = 0;
