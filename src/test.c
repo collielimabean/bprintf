@@ -16,7 +16,6 @@ void simple_bprintf_big_endian_test(void)
     char buf[15];
     int bytes_written;
     int i;
-    long longval;
 
     unsigned char golden[] = { 
         0xAB, 0xAB, 0xCD,
@@ -26,9 +25,7 @@ void simple_bprintf_big_endian_test(void)
         0xAB, 0xCD, 0xEF
     };
 
-    longval = 0x0123456789ABCDEF;
-
-    bytes_written = bprintf(buf, 15, "csil", Big, 0xAB, 0xABCD, 0xDEADBEEF, longval);
+    bytes_written = bprintf(buf, 15, "csil", Big, 0xAB, 0xABCD, 0xDEADBEEF, 0x0123456789ABCDEFUL);
     assert(bytes_written > 0);
 
     for (i = 0; i < bytes_written; i++)
@@ -40,7 +37,6 @@ void simple_bprintf_little_endian_test(void)
     char buf[15];
     int bytes_written;
     int i;
-    long longval;
 
     unsigned char golden[] = { 
         0xAB, 0xCD, 0xAB,
@@ -50,9 +46,7 @@ void simple_bprintf_little_endian_test(void)
         0x45, 0x23, 0x01
     };
 
-    longval = 0x0123456789ABCDEF;
-
-    bytes_written = bprintf(buf, 15, "csil", Little, 0xAB, 0xABCD, 0xDEADBEEF, longval);
+    bytes_written = bprintf(buf, 15, "csil", Little, 0xAB, 0xABCD, 0xDEADBEEF, 0x0123456789ABCDEFUL);
     assert(bytes_written > 0);
 
     for (i = 0; i < bytes_written; i++)
