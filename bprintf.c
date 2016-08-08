@@ -2,11 +2,14 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <errno.h>
 
-#define GET_BYTE(val, index) ((char)(val >> (8 * index) & 0xFF))
+
+#define GET_BYTE(val, index) ((char)((val) >> (8 * (index)) & 0xFF))
 
 
 static int validate_fmt_str(const char *fmt);
+static int get_fmt_chr_size(char fmt_char);
 
 /*
  * Supported format specifiers:
@@ -26,7 +29,7 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
     va_list args;
 
     if (!buffer || !fmt || size <= 0)
-        return 0;
+        return -EINVAL;
 
     /*
      * since fmt specifier is one char
@@ -35,7 +38,7 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
     num_args = strlen(fmt);
     required_size = validate_fmt_str(fmt);
     if (required_size == 0 || required_size > size)
-        return 0;
+        return -EINVAL;
 
     va_start(args, endianness);
     itr = fmt;
@@ -44,87 +47,30 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
 
     for (itr = fmt; *itr; itr++)
     {
+        int fmt_chr_size;
+        int i;
         uint64_t val;
         val = (uint64_t) va_arg(args, uint64_t);
 
-        switch (*itr)
+        fmt_chr_size = get_fmt_chr_size(*itr);
+        if (fmt_chr_size == 0)
+            return -EINVAL;
+
+        for (i = 0; i < fmt_chr_size; i++)
         {
-            case 'c':
-                buffer[buffer_index] = (char) (val);
-                buffer_index += sizeof(char);
-                break;
-
-            case 's':
-                if (endianness == Big)
-                {
-                    buffer[buffer_index] = GET_BYTE(val, 1);
-                    buffer[buffer_index + 1] = GET_BYTE(val, 0);
-                }
-                else
-                {
-                    buffer[buffer_index] = GET_BYTE(val, 0);
-                    buffer[buffer_index + 1] = GET_BYTE(val, 1);
-                }
-
-                buffer_index += sizeof(uint16_t);
-                break;
-
-            case 'i':
-                if (endianness == Big)
-                {
-                    buffer[buffer_index] = GET_BYTE(val, 3);
-                    buffer[buffer_index + 1] = GET_BYTE(val, 2);
-                    buffer[buffer_index + 2] = GET_BYTE(val, 1);
-                    buffer[buffer_index + 3] = GET_BYTE(val, 0);
-                }
-                else
-                {
-                    buffer[buffer_index] = GET_BYTE(val, 2);
-                    buffer[buffer_index + 1] = GET_BYTE(val, 3);
-                    buffer[buffer_index + 2] = GET_BYTE(val, 0);
-                    buffer[buffer_index + 3] = GET_BYTE(val, 1);                    
-                }
-
-                buffer_index += sizeof(uint32_t);
-                break;
-
-            case 'l':
-                if (endianness == Big)
-                {
-                    buffer[buffer_index] = GET_BYTE(val, 7);
-                    buffer[buffer_index + 1] = GET_BYTE(val, 6);
-                    buffer[buffer_index + 2] = GET_BYTE(val, 5);
-                    buffer[buffer_index + 3] = GET_BYTE(val, 4);
-                    buffer[buffer_index + 4] = GET_BYTE(val, 3);
-                    buffer[buffer_index + 5] = GET_BYTE(val, 2);
-                    buffer[buffer_index + 6] = GET_BYTE(val, 1);
-                    buffer[buffer_index + 7] = GET_BYTE(val, 0);
-                }
-                else
-                {
-                    buffer[buffer_index] = GET_BYTE(val, 6);
-                    buffer[buffer_index + 1] = GET_BYTE(val, 7);
-                    buffer[buffer_index + 2] = GET_BYTE(val, 4);
-                    buffer[buffer_index + 3] = GET_BYTE(val, 5);
-                    buffer[buffer_index + 4] = GET_BYTE(val, 2);
-                    buffer[buffer_index + 5] = GET_BYTE(val, 3);
-                    buffer[buffer_index + 6] = GET_BYTE(val, 0);
-                    buffer[buffer_index + 7] = GET_BYTE(val, 1);
-                }
-
-                buffer_index += sizeof(uint64_t);
-                break;
-
-            default:
-                /* string corrupted? */
-                return 0;
+            if (endianness == Little)
+                buffer[buffer_index + i] = GET_BYTE(val, i);
+            else
+                buffer[buffer_index + i] = GET_BYTE(val, fmt_chr_size - i - 1);
         }
+
+        buffer_index += fmt_chr_size;
         arg_index++;
     }
 
     /* not all arguments consumed! */
     if (arg_index != num_args)
-        return 0;
+        return -E2BIG;
 
     va_end(args);
     return required_size;
@@ -142,25 +88,32 @@ static int validate_fmt_str(const char *fmt)
     itr = fmt;
 
     for (itr = fmt; *itr; itr++)
-    {    
-        switch (*itr)
-        {
-            case 'c':
-                bufsize += sizeof(char);
-                break;
-            case 's':
-                bufsize += sizeof(uint16_t);
-                break;
-            case 'i':
-                bufsize += sizeof(uint32_t);
-                break;
-            case 'l':
-                bufsize += sizeof(uint64_t);
-                break;
-            default:
-                return 0;
-        }
+    {
+        int fmt_chr_size;
+        fmt_chr_size = get_fmt_chr_size(*itr);
+
+        if (fmt_chr_size == 0)
+            return 0;
+
+        bufsize += fmt_chr_size;
     }
 
     return bufsize;
+}
+
+static int get_fmt_chr_size(char fmt_char)
+{
+    switch (fmt_char)
+    {
+        case 'c':
+            return sizeof(char);
+        case 's':
+            return sizeof(uint16_t);
+        case 'i':
+            return sizeof(uint32_t);
+        case 'l':
+            return sizeof(uint64_t);
+        default:
+            return 0;
+    }
 }
