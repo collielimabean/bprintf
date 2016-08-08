@@ -54,7 +54,10 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
 
         fmt_chr_size = get_fmt_chr_size(*itr);
         if (fmt_chr_size == 0)
+        {
+            va_end(args);
             return -EINVAL;
+        }
 
         for (i = 0; i < fmt_chr_size; i++)
         {
@@ -68,12 +71,64 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
         arg_index++;
     }
 
+    va_end(args);
+
     /* not all arguments consumed! */
     if (arg_index != num_args)
         return -E2BIG;
 
-    va_end(args);
     return required_size;
+}
+
+int bscanf(const char *buffer, int size, const char *fmt, Endianness endianness,...)
+{
+    int fmt_size;
+    int num_args;
+    int arg_index;
+    va_list args;
+    const char *itr;
+    int buffer_index;
+
+    if (!buffer || size <= 0 || !fmt)
+        return -EINVAL;
+
+    num_args = strlen(fmt);
+    fmt_size = validate_fmt_str(fmt);
+    if (fmt_size == 0 || fmt_size > size)
+        return -EINVAL;
+
+    va_start(args, endianness);
+
+    buffer_index = 0;
+    arg_index = 0;
+    for (itr = fmt; *itr; itr++)
+    {
+        char *ptr;
+        int size;
+        int i;
+
+        size = get_fmt_chr_size(*itr);
+        ptr = (char *) va_arg(args, void *);
+
+        for (i = 0; i < size; i++)
+        {
+            if (endianness == Big)
+                ptr[size - i - 1] = buffer[buffer_index + i];
+            else
+                ptr[size - i - 1] = buffer[buffer_index + size - i - 1];
+        }
+
+        buffer_index += size;
+        arg_index++; 
+    }
+
+    va_end(args);
+
+    /* not all arguments consumed! */
+    if (arg_index != num_args)
+        return -E2BIG;
+
+    return fmt_size;
 }
 
 static int validate_fmt_str(const char *fmt)

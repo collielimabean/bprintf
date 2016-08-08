@@ -15,4 +15,13 @@ int bprintf(
     ...
 );
 
+int bscanf(
+    const char *buffer,
+    int size,
+    const char *fmt,
+    Endianness endianness,
+    ...
+);
+
+
 #endif
