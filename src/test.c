@@ -1,4 +1,5 @@
 #include "bprintf.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -55,10 +56,10 @@ void simple_bprintf_little_endian_test(void)
 
 void simple_bscanf_big_endian_test(void)
 {
-    unsigned char cval;
-    unsigned short sval;
-    unsigned int ival;
-    unsigned long lval;
+    uint8_t cval;
+    uint16_t sval;
+    uint32_t ival;
+    uint64_t lval;
 
     unsigned char buf[] = { 
         0xAB, 0xAB, 0xCD,
@@ -72,7 +73,7 @@ void simple_bscanf_big_endian_test(void)
     assert(cval == 0xAB);
     assert(sval == 0xABCD);
     assert(ival == 0xDEADBEEF);
-    assert(lval == 0x0123456789ABCDEFL);
+    assert(lval == 0x0123456789ABCDEFUL);
 }
 
 void bad_param_test(void)

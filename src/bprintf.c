@@ -4,20 +4,14 @@
 #include <stdint.h>
 #include <errno.h>
 
-
 #define GET_BYTE(val, index) ((char)((val) >> (8 * (index)) & 0xFF))
-
+#define ONE_BYTE_TOKEN      'c'
+#define TWO_BYTE_TOKEN      's'
+#define FOUR_BYTE_TOKEN     'i'
+#define EIGHT_BYTE_TOKEN    'l'
 
 static int validate_fmt_str(const char *fmt);
 static int get_fmt_chr_size(char fmt_char);
-
-/*
- * Supported format specifiers:
- * byte/char (1) = 'c'
- * short (2) = 's'
- * int (4) = 'i'
- * long (8) = 'l'
- */
 
 int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
 {
@@ -31,10 +25,7 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
     if (!buffer || !fmt || size <= 0)
         return -EINVAL;
 
-    /*
-     * since fmt specifier is one char
-     * # of varargs is simply length of fmt
-     */
+    /* format specifiers are one char long, hence # args = strlen of fmt*/
     num_args = strlen(fmt);
     required_size = validate_fmt_str(fmt);
     if (required_size == 0 || required_size > size)
@@ -50,7 +41,25 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
         int fmt_chr_size;
         int i;
         uint64_t val;
-        val = (uint64_t) va_arg(args, uint64_t);
+
+        switch (*itr)
+        {
+            case ONE_BYTE_TOKEN: 
+                val = (uint64_t) va_arg(args, uint8_t); 
+                break;
+            case TWO_BYTE_TOKEN:
+                val = (uint64_t) va_arg(args, uint16_t);
+                break;
+            case FOUR_BYTE_TOKEN: 
+                val = (uint64_t) va_arg(args, uint32_t);
+                break;
+            case EIGHT_BYTE_TOKEN:
+                val = (uint64_t) va_arg(args, uint64_t);
+                break;
+            default:
+                va_end(args);
+                return -EINVAL;
+        }
 
         fmt_chr_size = get_fmt_chr_size(*itr);
         if (fmt_chr_size == 0)
@@ -160,14 +169,14 @@ static int get_fmt_chr_size(char fmt_char)
 {
     switch (fmt_char)
     {
-        case 'c':
-            return sizeof(char);
-        case 's':
+        case ONE_BYTE_TOKEN: 
+            return sizeof(uint8_t);
+        case TWO_BYTE_TOKEN: 
             return sizeof(uint16_t);
-        case 'i':
-            return sizeof(uint32_t);
-        case 'l':
-            return sizeof(uint64_t);
+        case FOUR_BYTE_TOKEN:
+             return sizeof(uint32_t);
+        case EIGHT_BYTE_TOKEN:
+             return sizeof(uint64_t);
         default:
             return 0;
     }
