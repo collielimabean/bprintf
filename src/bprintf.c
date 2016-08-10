@@ -42,6 +42,7 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
         int i;
         uint64_t val;
 
+    #ifdef _WIN32
         switch (*itr)
         {
             case ONE_BYTE_TOKEN: 
@@ -60,6 +61,9 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
                 va_end(args);
                 return -EINVAL;
         }
+    #else
+        val = (uint64_t) va_arg(args, uint64_t);    
+    #endif
 
         fmt_chr_size = get_fmt_chr_size(*itr);
         if (fmt_chr_size == 0)
