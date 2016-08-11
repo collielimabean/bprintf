@@ -13,6 +13,7 @@
 static int validate_fmt_str(const char *fmt);
 static int get_fmt_chr_size(char fmt_char);
 
+
 int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
 {
     int required_size;
@@ -25,7 +26,7 @@ int bprintf(char *buffer, int size, const char *fmt, Endianness endianness,...)
     if (!buffer || !fmt || size <= 0)
         return -EINVAL;
 
-    /* format specifiers are one char long, hence # args = strlen of fmt*/
+    /* format specifiers are one char long, hence # args = strlen of fmt */
     num_args = strlen(fmt);
     required_size = validate_fmt_str(fmt);
     if (required_size == 0 || required_size > size)
